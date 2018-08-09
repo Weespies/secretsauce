@@ -1,0 +1,117 @@
+#### put this is schedual set it to run every 30 secs 
+
+
+
+:global SlackMessage ""
+
+:global SlackChannel "mikrotikrouters"
+
+/system script run MessagetoSlack
+
+
+
+----------------------------------------------------------------------------
+
+	
+
+#log parse functionality from http://forum.mikrotik.com/viewtopic.php?t=77498#p390040
+
+#change bot name
+
+#name script MessagetoSlack
+
+#
+
+
+
+ 
+
+:global lastTime
+
+:global messageencoded ""
+
+:global output
+
+ 
+
+:local botname "name_you_want_to_appear"
+
+:local channel "without#"
+
+:local token "xoxp-token"
+
+:local iconurl iconurl_must_end_in_.JPEG/.PNG no " required
+
+ 
+#these are the arrays you want to "scrape" from the log add as many as you like
+:local currentBuf [ :toarray [ /log find topics~"critical" || message~"login failure" || message~"disabled" || message~"logged in"  || message~"logged out" || message~"pptp" || message~"sit1" || message~"[Ff]ailure" ] ] ;
+
+:local currentLineCount [ :len $currentBuf ] ;
+
+ 
+
+if ($currentLineCount > 0) do={
+
+   :local currentTime "$[ /log get [ :pick $currentBuf ($currentLineCount -1) ] time ]";
+
+ 
+
+   :if ([:len $currentTime] = 15 ) do={
+
+      :set currentTime [ :pick $currentTime 7 15 ];
+
+   }
+
+   
+
+   :set output "$currentTime - $[/log get [ :pick $currentBuf ($currentLineCount-1) ] message ]";
+
+ 
+
+#replace ASCII characters with URL encoded characters
+
+ 
+
+:for i from=0 to=([:len $output] - 1) do={ 
+
+  :local char [:pick $output $i]
+
+  :if ($char = " ") do={
+
+   :set $char "%20"
+
+ }
+
+  :if ($char = "-") do={
+
+    :set $char "%2D"
+
+  }
+
+  :if ($char = "#") do={
+
+    :set $char "%23"
+
+  }
+
+  :if ($char = "+") do={
+
+    :set $char "%2B"
+
+  }
+
+  :set messageencoded ($messageencoded . $char)
+
+}
+
+ 
+
+   :if (([:len $lastTime] < 1) || (([:len $lastTime] > 0) && ($lastTime != $currentTime))) do={
+
+      :set lastTime $currentTime ;
+
+      /tool fetch url="https://slack.com/api/chat.postMessage?token=$token&channel=$channel&text=$messageencoded&icon_url=$iconurl&as_user=false&username=$botname";
+
+   }
+
+}
